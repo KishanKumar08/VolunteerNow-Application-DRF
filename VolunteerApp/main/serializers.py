@@ -1,5 +1,5 @@
 
-from .models import User,Organization,Opportunity,Review,Event,Notification,Application,CauseArea,Skill
+from .models import User,Organization,Opportunity,Review,Event,Application,CauseArea,Skill
 from rest_framework.serializers import ModelSerializer,PrimaryKeyRelatedField
 
 from django.contrib.auth.hashers import make_password
@@ -83,11 +83,6 @@ class review_serializer(ModelSerializer):
 class event_serializer(ModelSerializer):
     class Meta:
         model = Event
-        fields = '__all__'
-
-class notification_serializer(ModelSerializer):
-    class Meta:
-        model = Notification
         fields = '__all__'
 
 class application_serializer(ModelSerializer):

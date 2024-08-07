@@ -1,50 +1,102 @@
 from django.conf import settings
 from django.conf.urls.static import static
-from django.urls import path
+from django.urls import path, include
+
+
 from .views import (
 
     UserSignUpView,UserReadUpdateDeleteView,
     LoginView,LogoutView,
     OrganizationRegisterView,OrganizationListView,OrganizationReadUpdateDeleteView,
-    AllOpportunitiesView,OpportunityCreateView,ApplicationsForOpportunityView,
+    AllOpportunitiesView,OpportunityCreateView,ApplicationsForOpportunityView,OpportunityReadUpdateDeleteView,
     OrganizationOpportunitiesView,
-    org_reviews
+    OrganizationReviews,CreateReviewView,UpdateReviewView,DeleteReviewView,
+    OrganizationEventsView,EventsView,CreateEventView,EventDetailView,
+    ApplicationUpdateView,ApplicationDeleteView,ApplicationReadView,ApplicationCreateView
+)
+
+from rest_framework import permissions
+from drf_yasg import openapi
+from drf_yasg.views import get_schema_view
+
+schema_view = get_schema_view(
+    openapi.Info(
+        title="Volunteer Application API",
+        default_version='v1',
+        description="Test description",
+        terms_of_service="https://www.google.com/policies/terms/",
+        contact=openapi.Contact(email="contact@yourapi.local"),
+        license=openapi.License(name="BSD License"),
+    ),
+    public=True,
+    permission_classes=(permissions.AllowAny,),
 )
 
 urlpatterns = [
     # User
     path('user/signup/',UserSignUpView.as_view(),name="user-signup"),
     path('user/login/',LoginView.as_view(),name="user-login"),
-    path('user/<int:pk>/', UserReadUpdateDeleteView.as_view(), name='user-detail'),
-    path('user/<int:pk>/update/', UserReadUpdateDeleteView.as_view(), name='user-update'),
-    path('user/<int:pk>/delete/', UserReadUpdateDeleteView.as_view(), name='user-delete'),
+    path('user/<int:pk>/', UserReadUpdateDeleteView.as_view(), name='user-detail-update-delete'),
     path('user/logout/', LogoutView.as_view(), name='user-logout'),
 
     path('organization/register/',OrganizationRegisterView.as_view(),name="organization-register"),
     path('organization/login/',LoginView.as_view(),name="organization-login"),
     path('organization/all/',OrganizationListView.as_view(),name="organizations-list"),
-    path('organization/<int:pk>/',OrganizationReadUpdateDeleteView.as_view(),name="organization-detail"),
-    path('organization/<int:pk>/update/',OrganizationReadUpdateDeleteView.as_view(),name="organization-update"),
-    path('organization/<int:pk>/delete/',OrganizationReadUpdateDeleteView.as_view(),name="organization-delete"),
+    path('organization/<int:pk>/',OrganizationReadUpdateDeleteView.as_view(),name="organization-detail-update-delete"),
     path('organization/logout/', LogoutView.as_view(), name='organization-logout'),
+
     path('organization/<int:org_id>/opportunities/all',OrganizationOpportunitiesView.as_view(),name="organization-opportunities"),
     path('organization/<int:org_id>/opportunities/create/',OpportunityCreateView.as_view(),name="opportunity-create"),
+    path('organization/<int:org_id>/opportunities/<int:opp_id>/',OpportunityReadUpdateDeleteView.as_view(),name="opportunity-detail-update-delete"),
+
     path(
-        'organization/<int:org_id>/opportunities/<int:opp_id>/applications/all',
+        'organization/<int:org_id>/opportunities/<int:opp_id>/applications/all/',
         ApplicationsForOpportunityView.as_view(),
         name="opportunity-applications"
     ),
-    path('opportunities/all',AllOpportunitiesView.as_view(),name="all-opportunities"),
-    # path('opportunities/<int:pk>/',opportunity_detail.as_view(),name="opportunity"),
-    # path('opportunities/<int:pk>/update/',opportunity_detail.as_view(),name="opportunity_update"),
-    # path('opportunities/<int:pk>/delete/',opportunity_detail.as_view(),name="opportunity_delete"),
+    path(
+        'organization/<int:org_id>/opportunities/<int:opp_id>/applications/create/',
+        ApplicationCreateView.as_view(),
+        name="application-create"
+    ),
+    path(
+        'organization/<int:org_id>/opportunities/<int:opp_id>/applications/<int:app_id>/update/',
+        ApplicationUpdateView.as_view(),
+        name="application-update"
+    ),
+    path(
+        'organization/<int:org_id>/opportunities/<int:opp_id>/applications/<int:pk>/',
+        ApplicationReadView.as_view(),
+        name="application-read"
+    ),
+    path(
+        'organization/<int:org_id>/opportunities/<int:opp_id>/applications/<int:pk>/delete/',
+        ApplicationDeleteView.as_view(),
+        name="application-delete"
+    ),
 
-    path('organization/<int:org_id>/reviews/',org_reviews.as_view(),name="reviews_view"),
-    path('organization/<int:org_id>/reviews/create',org_reviews.as_view(),name="review_create"),
+    path('opportunities/all/',AllOpportunitiesView.as_view(),name="all-opportunities"),
+
+    path('organization/<int:org_id>/reviews/',OrganizationReviews.as_view(),name="organization-reviews"),
+    path('organization/<int:org_id>/reviews/create/',CreateReviewView.as_view(),name="review-create"),
+    path('organization/<int:org_id>/reviews/<int:pk>/update/',UpdateReviewView.as_view(),name="review-update"),
+    path('organization/<int:org_id>/reviews/<int:pk>/delete/',DeleteReviewView.as_view(),name="review-delete"),
+
+
+    path('events/all/',EventsView.as_view(),name="events"),
+    path('organization/<int:org_id>/events/all/',OrganizationEventsView.as_view(),name="organization-events"),
+    path('organization/<int:org_id>/events/create/',CreateEventView.as_view(),name="event-create"),
+    path('organization/<int:org_id>/events/<int:pk>/',EventDetailView.as_view(),name="event-detail-update-delete"),
 
 
 
+    # Swagger UI
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger-ui'),
 
-    
+    # ReDoc UI
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc-ui'),
+
+    # OpenAPI schema
+    path('schema/', schema_view.without_ui(cache_timeout=0), name='schema'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

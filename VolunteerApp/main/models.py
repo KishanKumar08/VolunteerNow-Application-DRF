@@ -105,15 +105,6 @@ class Event(models.Model):
     def __str__(self):
         return f'Event - {self.title}'
 
-class Notification(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE,related_name='notifications')
-    message = models.TextField()
-    date_sent = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Notification for {self.user}"
-
 
 
 

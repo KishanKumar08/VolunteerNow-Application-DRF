@@ -4,21 +4,23 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth import login,authenticate,logout
 
 from rest_framework.response import Response
-from rest_framework.generics import ListAPIView,DestroyAPIView,CreateAPIView,ListCreateAPIView,RetrieveAPIView,RetrieveDestroyAPIView,RetrieveUpdateAPIView,RetrieveUpdateDestroyAPIView
+
+from rest_framework.generics import *
 from rest_framework.decorators import APIView
+
 from rest_framework import status,permissions
-from rest_framework.pagination import PageNumberPagination
 from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
+
 from rest_framework.exceptions import NotFound,PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
+from django_filters import OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
+
 from .permissions import IsCompany, IsUser
-from .models import User,Organization,Opportunity,Review,Event,Notification,Application,CauseArea,Skill
-from .serializers import organization_create_serializer,user_create_serializer,user_serializer,opportunity_serializer,organization_serializer,review_serializer,event_serializer,notification_serializer,application_serializer
-
-
-class custom_pagination(PageNumberPagination):
-    page_size = 2
+from .models import *
+from .serializers import *
 
 class UserSignUpView(CreateAPIView):
     permission_classes = [permissions.AllowAny]
@@ -151,9 +153,12 @@ class OrganizationRegisterView(APIView):
             status=status.HTTP_200_OK)
 
 class OrganizationListView(ListAPIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsUser]
     queryset = Organization.objects.all()
     serializer_class = organization_serializer
+    filter_backends = [SearchFilter,DjangoFilterBackend]
+    search_fields = ['=city','^name','^address']
+    filterset_fields = ['city']
 
 class OrganizationReadUpdateDeleteView(RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated,IsCompany]
@@ -171,9 +176,12 @@ class OrganizationReadUpdateDeleteView(RetrieveUpdateDestroyAPIView):
             raise NotFound(detail="Company not found")
 
 class AllOpportunitiesView(ListAPIView):
-    permission_classes = [permissions.IsAuthenticated,IsUser]
+    permission_classes = [IsAuthenticated,IsUser]
     queryset = Opportunity.objects.all()
     serializer_class = opportunity_serializer
+    filter_backends = [SearchFilter,DjangoFilterBackend]
+    search_fields = ['location']
+    filterset_fields = ['location','organization','cause_area','skills','status']
 
 class OrganizationOpportunitiesView(APIView):
     permission_classes = [IsAuthenticated,IsCompany]
@@ -203,8 +211,16 @@ class OpportunityCreateView(APIView):
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
     
 class OpportunityReadUpdateDeleteView(RetrieveUpdateDestroyAPIView):
-    pass
+    permission_classes = [IsAuthenticated,IsCompany]
+    serializer_class = opportunity_serializer
 
+    def get_object(self):
+        opp_id = self.kwargs.get('opp_id')
+        opportunity = Opportunity.objects.get(id=opp_id)
+        if opportunity.organization.name != self.request.user.username:
+            raise PermissionDenied(detail="You do not have permission for updating this opportunity")
+        return opportunity
+        
 class ApplicationsForOpportunityView(ListAPIView):
     serializer_class = application_serializer
 
@@ -214,35 +230,152 @@ class ApplicationsForOpportunityView(ListAPIView):
 
 class ApplicationCreateView(CreateAPIView):
     serializer_class = application_serializer
-    permission_classes = [permissions.IsAuthenticated,IsUser]
+    permission_classes = [IsAuthenticated,IsUser]
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+    def post(self,request,org_id,opp_id):
+        request.data["user"] = request.user.id
+        request.data["opportunity"] = opp_id
 
-class ApplicationReadUpdateView(APIView):
-    pass
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail':'Application created Successfully'},status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class org_reviews(ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated,IsUser]
+class ApplicationReadView(RetrieveAPIView):
+    queryset = Application.objects.all()
+    serializer_class = application_serializer
+    permission_classes = [IsAuthenticated,IsCompany]
+
+class ApplicationUpdateView(UpdateAPIView):
+    permission_classes = [IsAuthenticated,IsCompany]
+    serializer_class = application_serializer
+
+    def put(self,request,org_id,opp_id,app_id):
+        application = Application.objects.get(id=app_id)
+        if application.opportunity.organization.name != request.user.username:
+            raise PermissionDenied(detail="You do not have permission to update this Event")
+        serializer = self.get_serializer(application,data = request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail':'Application Details updated Successfully'},status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class ApplicationDeleteView(DestroyAPIView):
+    queryset = Application.objects.all()
+    serializer_class = application_serializer
+    permission_classes = [IsAuthenticated,IsCompany]
+
+    def delete(self, request, *args, **kwargs):
+        response = super().delete(request, *args, **kwargs)
+        return Response({'detail': 'Application successfully deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+class OrganizationReviews(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = review_serializer
+    def get_queryset(self):
+        org_id = self.kwargs['org_id']
+        return Review.objects.filter(org=org_id)
+
+class CreateReviewView(APIView):
+    
+    permission_classes = [IsAuthenticated,IsUser]
+
+    def post(self,request,org_id):
+        request.data["org"] = org_id
+        request.data["user"] = request.user.id
+        serializer = review_serializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail':'Review added Successfully'},status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UpdateReviewView(UpdateAPIView):
+
+    permission_classes = [IsAuthenticated,IsUser]
     serializer_class = review_serializer
 
+    def put(self,request,org_id,pk):
+        review = Review.objects.get(id=pk)
+        if review.user != request.user.id:
+            raise PermissionDenied(detail="You do not have permission to update this review")
+        serializer = self.get_serializer(review,data = request.data,partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail':'Review updated Successfully'},status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class DeleteReviewView(DestroyAPIView):
+    queryset = Review.objects.all()
+    serializer_class = review_serializer
+    permission_classes = [IsAuthenticated,IsUser,IsCompany]
+
+    def delete(self, request, *args, **kwargs):
+        response = super().delete(request, *args, **kwargs)
+        return Response({'detail': 'Review successfully deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+class OrganizationEventsView(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = event_serializer
     def get_queryset(self):
-        return Review.objects.filter(org=self.kwargs['org_id'])
+        org_id = self.kwargs['org_id']
+        return Event.objects.filter(Organization=org_id)
+
+class EventsView(ListAPIView):
+    permission_classes = [IsAuthenticated,IsUser]
+    queryset = Event.objects.all()
+    serializer_class = event_serializer
+    filter_backends = [SearchFilter,DjangoFilterBackend]
+    search_fields = ['location']
+    filterset_fields = ['location','Organization','date']
     
+class CreateEventView(APIView):
+    permission_classes = [IsAuthenticated,IsCompany]
+    def post(self,request,org_id):
+        request.data["Organization"] = org_id
+        serializer = event_serializer(data = request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'detail':'Event created Successfully'},status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class UpdateEventView(UpdateAPIView):
+    permission_classes = [IsAuthenticated,IsCompany]
+    serializer_class = event_serializer
 
-    # def get(self,request,pk):
-    #     queryset = Review.objects.filter(org=pk)
-    #     serializer = review_serializer(queryset,many=True)
-    #     return Response({'data':serializer.data})
+    def get_object(self):
+        pk = self.kwargs.get('pk')
+        event = Event.objects.get(id=pk)
+        if event.Organization.name != self.request.user.username:
+            raise PermissionDenied(detail="You do not have permission to update this Event")
+        return event
 
-    # def post(self,request,pk):
-    #     serializer = review_serializer(data = request.data)
-    #     if serializer.is_valid():
-    #         serializer.save()
-    #         return Response({'message':'Review Added','data':serializer.data},tatus=status.HTTP_200_OK)
-    #     return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
+class EventDetailView(RetrieveUpdateDestroyAPIView):
+    queryset = Event.objects.all()
+    serializer_class = event_serializer
+    permission_classes = [IsAuthenticated,IsUser,IsCompany]
 
+    def get_object(self):
+        event = super().get_object()
+        if event.Organization.name != self.request.user.username:
+            raise PermissionDenied(detail="You do not have permission to update this Event")
+        return event
+    
+    def put(self,request,*args,**kwargs):
+        response = super().put(self, request, *args, **kwargs)
+        return Response({'detail': 'Event updated successfully '}, status=status.HTTP_204_NO_CONTENT)
+    
+    def patch(self,request,*args,**kwargs):
+        response = super().patch(self, request, *args, **kwargs)
+        return Response({'detail': 'Event updated successfully '}, status=status.HTTP_204_NO_CONTENT)
 
+    def delete(self, request, *args, **kwargs):
+        response = super().delete(request, *args, **kwargs)
+        return Response({'detail': 'Event deleted successfully '}, status=status.HTTP_204_NO_CONTENT)
 
 

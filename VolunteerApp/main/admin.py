@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import User,Organization,Opportunity,Review,Event,Notification,Application,CauseArea,Skill
+from .models import User,Organization,Opportunity,Review,Event,Application,CauseArea,Skill
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -46,10 +46,4 @@ class EventAdmin(admin.ModelAdmin):
     list_display = ['id', 'title', 'date', 'location', 'Organization']
     search_fields = ['title', 'Organization__name']
     list_filter = ['date']
-
-@admin.register(Notification)
-class NotificationAdmin(admin.ModelAdmin):
-    list_display = ['id', 'user', 'message', 'date_sent', 'is_read']
-    search_fields = ['user__username', 'message']
-    list_filter = ['is_read']
 
