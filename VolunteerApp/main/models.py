@@ -1,19 +1,42 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator 
+from django.contrib.auth.hashers import make_password
 
 class User(AbstractUser):
+
+    is_company = models.BooleanField(default=False)
+    is_user = models.BooleanField(default=False)
+    email = models.EmailField(unique=True)
+    
+    def save(self,*args,**kwargs):
+        if self.password is not None:
+            self.password = make_password(self.password)
+        return super(User,self).save(*args, **kwargs)
+
+    def __str__(self):
+        return self.username
+
+class userProfile(models.Model):
+    name = models.CharField(max_length=150, unique=True)
+    password = models.CharField(max_length=255) 
+    email = models.EmailField(unique=True,blank=True,null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
     city = models.CharField(max_length=100, blank=True, null=True)
     country = models.CharField(max_length=100, blank=True, null=True)
     date_of_birth = models.DateField(blank=True, null=True)
     bio = models.TextField(blank=True, null=True)
     phone_no = models.CharField(max_length=10, blank=True, null=True)
-    is_company = models.BooleanField(default=False)
-    is_user = models.BooleanField(default=False)
+
+    def save(self,*args,**kwargs):
+        if self.password is not None:
+            self.password = make_password(self.password)
+        return super(userProfile,self).save(*args, **kwargs)
 
     def __str__(self):
-        return self.username
-
+        return self.name
+    
 class Organization(models.Model):
     name = models.CharField(max_length=255,unique=True)
     password = models.CharField(max_length=255)
@@ -32,6 +55,11 @@ class Organization(models.Model):
     description = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
+
+    def save(self,*args,**kwargs):
+        if self.password is not None:
+            self.password = make_password(self.password)
+        return super(userProfile,self).save(*args, **kwargs)
 
     def __str__(self):
         return self.name
@@ -76,7 +104,8 @@ class Application(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE,related_name='applications')
     opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE,related_name='applications')
     status = models.CharField(max_length=20, default='pending')
-
+    created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
+    
     def __str__(self):
         return f"Application by {self.user} for {self.opportunity}"
 

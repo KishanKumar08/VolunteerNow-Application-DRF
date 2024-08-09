@@ -15,21 +15,21 @@ from .views import (
     ApplicationUpdateView,ApplicationDeleteView,ApplicationReadView,ApplicationCreateView
 )
 
-from rest_framework import permissions
-from drf_yasg import openapi
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="Volunteer Application API",
+        title="Volunteer API",
         default_version='v1',
-        description="Test description",
+        description="API documentation",
         terms_of_service="https://www.google.com/policies/terms/",
-        contact=openapi.Contact(email="contact@yourapi.local"),
+        contact=openapi.Contact(email="contact@yourdomain.com"),
         license=openapi.License(name="BSD License"),
     ),
     public=True,
-    permission_classes=(permissions.AllowAny,),
+    permission_classes=[AllowAny],  # Ensure this is a list or tuple
 )
 
 urlpatterns = [
@@ -88,15 +88,7 @@ urlpatterns = [
     path('organization/<int:org_id>/events/create/',CreateEventView.as_view(),name="event-create"),
     path('organization/<int:org_id>/events/<int:pk>/',EventDetailView.as_view(),name="event-detail-update-delete"),
 
-
-
-    # Swagger UI
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger-ui'),
-
-    # ReDoc UI
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc-ui'),
-
-    # OpenAPI schema
-    path('schema/', schema_view.without_ui(cache_timeout=0), name='schema'),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger-schema'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

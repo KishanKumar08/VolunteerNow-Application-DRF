@@ -1,29 +1,36 @@
 
-from .models import User,Organization,Opportunity,Review,Event,Application,CauseArea,Skill
-from rest_framework.serializers import ModelSerializer,PrimaryKeyRelatedField
+from .models import User,Organization,Opportunity,Review,Event,Application,CauseArea,Skill,userProfile
+from rest_framework.serializers import ModelSerializer,PrimaryKeyRelatedField,Serializer
+from rest_framework import serializers
 
 from django.contrib.auth.hashers import make_password
 
 class user_create_serializer(ModelSerializer):
     class Meta:
-        model = User
-        fields = '__all__'
-        extra_kwargs = {'password':{'write_only':True}}
+        model = userProfile
+        fields = ['id','name','password','email','date_of_birth','city']
+        extra_kwargs = {'password':{'write_only':True},'email': {'required': True}}
+        
 
     def create(self,validated_data):
-        password = validated_data.pop('password',None)
-        if password is not None:
-            password = make_password(password)
-            validated_data['is_user'] = True
-            validated_data['password'] = password
-            user = User.objects.create(**validated_data)
-            return user
+        user = User.objects.create(
+            username=validated_data['name'],
+            email=validated_data['email'],
+            password=validated_data['password'],
+            is_user=True,
+            is_active=True)
+        userprofile = userProfile.objects.create(**validated_data)
+        return userprofile
 
 class user_serializer(ModelSerializer):
     class Meta:
-        model = User
+        model = userProfile
         fields = '__all__'
         extra_kwargs = {'password':{'write_only':True}}
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.CharField(max_length=50)
+    password = serializers.CharField(max_length=50)
 
 class organization_create_serializer(ModelSerializer):
 
@@ -34,11 +41,8 @@ class organization_create_serializer(ModelSerializer):
 
     def create(self,validated_data):
         name = validated_data.get('name')
-        password = validated_data.pop('password')
-        password = make_password(password)
-        validated_data['password'] = password
+        password = validated_data.get('password',None)
         email = validated_data.get('email')
-
         user = User.objects.create(username=name,password=password,email=email,is_company=True)
         org = Organization.objects.create(**validated_data)
         return org

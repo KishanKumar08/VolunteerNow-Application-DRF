@@ -1,11 +1,16 @@
 from django.contrib import admin
 
-from .models import User,Organization,Opportunity,Review,Event,Application,CauseArea,Skill
+from .models import *
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ['id', 'username', 'email', 'is_user', 'is_company', 'date_of_birth']
+    list_display = ['id', 'username', 'email', 'is_user', 'is_company']
     search_fields = ['username', 'email']
+
+@admin.register(userProfile)
+class userProfileAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'email', 'city', 'date_of_birth']
+    search_fields = ['name', 'email']
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):

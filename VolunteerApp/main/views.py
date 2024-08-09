@@ -14,13 +14,15 @@ from rest_framework_simplejwt.tokens import RefreshToken,AccessToken
 from rest_framework.exceptions import NotFound,PermissionDenied
 from rest_framework.permissions import IsAuthenticated
 
-from django_filters import OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter
+from rest_framework.filters import SearchFilter,OrderingFilter
 
 from .permissions import IsCompany, IsUser
 from .models import *
-from .serializers import *
+from .serializers import LoginSerializer,user_create_serializer,user_serializer,organization_create_serializer,organization_serializer,opportunity_serializer,cause_area_serializer,skill_serializer,event_serializer,review_serializer,application_serializer
+
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 
 class UserSignUpView(CreateAPIView):
     permission_classes = [permissions.AllowAny]
@@ -38,28 +40,25 @@ class UserSignUpView(CreateAPIView):
             status=status.HTTP_200_OK)
 
 class LoginView(APIView):
-
     permission_classes = [permissions.AllowAny]
 
     def get(self,request):
         return Response({'message':'Put all the details required for Login'},status=status.HTTP_200_OK)
 
     def post(self,request):
-        username = request.data.get('username',None)
-        name = request.data.get('name',None)
-        password = request.data['password']
 
-        if username and not name:
-            user = User.objects.filter(username=username).first()
+        serializer = LoginSerializer(data=request.data)
 
-        if name and not username:
-            user = User.objects.filter(username=name).first()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        email = serializer.data.get('email',None)
+        password = serializer.data.get('password',None)
+        
+        user = User.objects.filter(email=email).first()
 
         if user is None:
-            return Response({'detail': 'User not Found with this username'}, status=status.HTTP_400_BAD_REQUEST)
-
-        if not user.check_password(password):
-            return Response({'detail': 'Wrong paasword'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': 'User not Found with this email'}, status=status.HTTP_400_BAD_REQUEST)
 
         refresh = RefreshToken.for_user(user)
 
@@ -69,16 +68,19 @@ class LoginView(APIView):
             'message':'Login Successfull',
             'refresh_token':str(refresh),
             'access_token':str(refresh.access_token),
-            'data':user_serializer(user).data
         }
         response.status = status.HTTP_200_OK
         response.set_cookie(
             key='refresh_token',
             value=str(refresh),
+            httponly=True,
+            secure=True,
         )
         response.set_cookie(
             key='access_token',
             value=str(refresh.access_token),
+            httponly=True,
+            secure=True,
         )
 
         return response
@@ -126,6 +128,9 @@ class LogoutView(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()
 
+            accesstoken = AccessToken(access_token)
+            accesstoken.blacklist()
+
             response = Response({'detail': 'Successfully logged out'}, status=status.HTTP_205_RESET_CONTENT)
             response.delete_cookie('refresh_token')
             response.delete_cookie('access_token')
@@ -156,7 +161,8 @@ class OrganizationListView(ListAPIView):
     permission_classes = [IsAuthenticated,IsUser]
     queryset = Organization.objects.all()
     serializer_class = organization_serializer
-    filter_backends = [SearchFilter,DjangoFilterBackend]
+    filter_backends = [SearchFilter,DjangoFilterBackend,OrderingFilter]
+    ordering_fields = ['name']
     search_fields = ['=city','^name','^address']
     filterset_fields = ['city']
 
