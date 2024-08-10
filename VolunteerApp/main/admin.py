@@ -52,3 +52,6 @@ class EventAdmin(admin.ModelAdmin):
     search_fields = ['title', 'Organization__name']
     list_filter = ['date']
 
+@admin.register(EventRegistration)
+class EventRegistrationAdmin(admin.ModelAdmin):
+    list_display = ['id', 'event', 'user']

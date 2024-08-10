@@ -2,9 +2,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
 
-
 from .views import (
-
     UserSignUpView,UserReadUpdateDeleteView,
     LoginView,LogoutView,
     OrganizationRegisterView,OrganizationListView,OrganizationReadUpdateDeleteView,
@@ -12,7 +10,8 @@ from .views import (
     OrganizationOpportunitiesView,
     OrganizationReviews,CreateReviewView,UpdateReviewView,DeleteReviewView,
     OrganizationEventsView,EventsView,CreateEventView,EventDetailView,
-    ApplicationUpdateView,ApplicationDeleteView,ApplicationReadView,ApplicationCreateView
+    ApplicationUpdateView,ApplicationDeleteView,ApplicationReadView,ApplicationCreateView,
+    EventRegistrationView,EventAttendeesListView
 )
 
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -87,6 +86,8 @@ urlpatterns = [
     path('organization/<int:org_id>/events/all/',OrganizationEventsView.as_view(),name="organization-events"),
     path('organization/<int:org_id>/events/create/',CreateEventView.as_view(),name="event-create"),
     path('organization/<int:org_id>/events/<int:pk>/',EventDetailView.as_view(),name="event-detail-update-delete"),
+    path('organization/<int:org_id>/events/<int:event_id>/',EventAttendeesListView.as_view(),name="event-attendees-list"),
+    path('events/int:<event_id>/register',EventRegistrationView.as_view(),name="event-register"),
 
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger-schema'),
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='redoc'),
