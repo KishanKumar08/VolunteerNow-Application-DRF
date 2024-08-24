@@ -1,7 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator, MaxValueValidator 
-from django.contrib.auth.hashers import make_password
 
 # Custom User model extending AbstractUser
 class User(AbstractUser):
@@ -12,7 +11,7 @@ class User(AbstractUser):
     def save(self, *args, **kwargs):
         # Hash password before saving if it's not None
         if self.password is not None:
-            self.password = make_password(self.password)
+            self.set_password(self.password)
         return super(User, self).save(*args, **kwargs)
 
     def __str__(self):

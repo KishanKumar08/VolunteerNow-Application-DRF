@@ -16,10 +16,10 @@ class user_create_serializer(ModelSerializer):
         user = User.objects.create(
             username=validated_data['name'],
             email=validated_data['email'],
-            password=validated_data['password'],
             is_user=True,
             is_active=True
         )
+        user.set_password(validated_data['password'])
         userprofile = userProfile.objects.create(**validated_data)
         return userprofile
 
